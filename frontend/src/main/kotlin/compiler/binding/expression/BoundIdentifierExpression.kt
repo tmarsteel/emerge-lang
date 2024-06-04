@@ -200,11 +200,6 @@ class BoundIdentifierExpression(
                 }
             }
 
-            if (usageContext.requiresVariableLifetimeActive) {
-                val state = context.getEphemeralState(VariableLifetime, variable)
-                reportings.addAll(state.validateValueRead(this@BoundIdentifierExpression))
-            }
-
             thisUsageCapturesWithMutability?.let { capturedWithMutability ->
                 if (variable.ownershipAtDeclarationTime == VariableOwnership.BORROWED) {
                     reportings.add(Reporting.borrowedVariableCaptured(variable, this@BoundIdentifierExpression))
@@ -216,6 +211,19 @@ class BoundIdentifierExpression(
                             declaration.span,
                         )
                     )
+                }
+            }
+
+            if (usageContext.requiresVariableLifetimeActive) {
+                val lifeStateBeforeUsage = context.getEphemeralState(VariableLifetime, variable)
+                reportings.addAll(lifeStateBeforeUsage.validateCapture(this@BoundIdentifierExpression))
+
+                if (thisUsageCapturesWithMutability != null) {
+                    val repetitionRelativeToVariable = context.getRepetitionBehaviorRelativeTo(variable.modifiedContext)
+                    if (repetitionRelativeToVariable.mayRepeat) {
+                        val stateAfterUsage = _modifiedContext.getEphemeralState(VariableLifetime, variable)
+                        reportings.addAll(stateAfterUsage.validateRepeatedCapture(lifeStateBeforeUsage, this@BoundIdentifierExpression))
+                    }
                 }
             }
 

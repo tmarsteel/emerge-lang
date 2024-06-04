@@ -65,7 +65,8 @@ object VariableLifetime : EphemeralStateClass<BoundVariable, VariableLifetime.St
 
     sealed interface State {
         fun maybe(): State = this
-        fun validateValueRead(read: BoundIdentifierExpression): Collection<Reporting> = emptySet()
+        fun validateCapture(read: BoundIdentifierExpression): Collection<Reporting> = emptySet()
+        fun validateRepeatedCapture(stateBeforeCapture: State, read: BoundIdentifierExpression): Collection<Reporting> = emptySet()
 
         /**
          * No lifetime tracking is done, it lives for the entirety of its scope
@@ -80,8 +81,17 @@ object VariableLifetime : EphemeralStateClass<BoundVariable, VariableLifetime.St
             val maybe: Boolean = false,
         ) : State {
             override fun maybe() = if (maybe) this else Dead(variable, lifetimeEndedAt, true)
-            override fun validateValueRead(read: BoundIdentifierExpression): Collection<Reporting> {
+            override fun validateCapture(read: BoundIdentifierExpression): Collection<Reporting> {
                 return setOf(Reporting.variableUsedAfterLifetime(variable, read, this))
+            }
+
+            override fun validateRepeatedCapture(stateBeforeCapture: State, read: BoundIdentifierExpression): Collection<Reporting> {
+                if (stateBeforeCapture is Dead) {
+                    // the looping isn't causing the problem; don't report anything here. validateCapture should report it
+                    return emptySet()
+                }
+
+                return setOf(Reporting.lifetimeEndingCaptureInLoop(variable, read))
             }
         }
     }

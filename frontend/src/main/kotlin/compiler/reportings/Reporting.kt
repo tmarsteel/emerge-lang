@@ -368,6 +368,9 @@ abstract class Reporting internal constructor(
         fun variableUsedAfterLifetime(variable: BoundVariable, read: BoundIdentifierExpression, deadState: VariableLifetime.State.Dead)
             = VariableUsedAfterLifetimeReporting(variable.declaration, read.declaration.span, deadState.lifetimeEndedAt, deadState.maybe)
 
+        fun lifetimeEndingCaptureInLoop(variable: BoundVariable, read: BoundIdentifierExpression)
+            = LifetimeEndingCaptureInLoopReporting(variable.declaration, read.declaration.span)
+
         fun borrowedVariableCaptured(variable: BoundVariable, capture: BoundIdentifierExpression)
             = BorrowedVariableCapturedReporting(variable.declaration, capture.declaration.span)
 

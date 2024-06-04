@@ -1,6 +1,7 @@
 package compiler.compiler.negative
 
 import compiler.reportings.BorrowedVariableCapturedReporting
+import compiler.reportings.LifetimeEndingCaptureInLoopReporting
 import compiler.reportings.VariableUsedAfterLifetimeReporting
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -146,6 +147,21 @@ class BorrowAndLifetimeErrors : FreeSpec({
                     it.variable.name.value shouldBe "v"
                     it.lifetimeEndedMaybe shouldBe false
                 }
+        }
+    }
+
+    "loops" - {
+        "capturing exclusive in while loop" {
+            validateModule("""
+                class C {}
+                fn test(p: exclusive C) {
+                    while true {
+                        capture(p)
+                    }
+                }
+                intrinsic fn capture(p: const Any)
+            """.trimIndent())
+                .shouldReport<LifetimeEndingCaptureInLoopReporting>()
         }
     }
 
