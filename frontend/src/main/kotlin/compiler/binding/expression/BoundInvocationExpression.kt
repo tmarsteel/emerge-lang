@@ -21,6 +21,7 @@ package compiler.binding.expression
 import compiler.ast.VariableOwnership
 import compiler.ast.expression.InvocationExpression
 import compiler.ast.type.TypeMutability
+import compiler.ast.type.TypeVariance
 import compiler.binding.BoundExecutable
 import compiler.binding.BoundFunction
 import compiler.binding.BoundMemberFunction
@@ -100,6 +101,11 @@ class BoundInvocationExpression(
             receiverExpression?.markEvaluationResultUsed()
             valueArguments.map(BoundExpression<*>::semanticAnalysisPhase1).forEach(reportings::addAll)
             typeArguments = declaration.typeArguments?.map(context::resolveType)
+            typeArguments?.forEach {
+                if (it.variance != TypeVariance.UNSPECIFIED) {
+                    reportings.add(Reporting.varianceOnInvocationTypeArgument(it))
+                }
+            }
             reportings
         }
 
@@ -134,7 +140,7 @@ class BoundInvocationExpression(
                     }
             }
 
-            typeArguments?.forEach { reportings.addAll(it.validate(TypeUseSite.Irrelevant(it.span, null))) }
+            typeArguments?.forEach { reportings.addAll(it.validate(TypeUseSite.Irrelevant(it.astNode.span, null))) }
             valueArguments.forEach { reportings.addAll(it.semanticAnalysisPhase2()) }
 
             if (availableOverloads == null) {
@@ -317,7 +323,7 @@ class BoundInvocationExpression(
 
                 // TODO: source location
                 val returnTypeArgsLocation = typeArguments
-                    ?.mapNotNull { it.span }
+                    ?.mapNotNull { it.astNode.span }
                     ?.reduce(Span::rangeTo)
                     ?: declaration.span
                 val returnTypeWithVariables = candidateFn.returnType?.withTypeVariables(candidateFn.allTypeParameters)

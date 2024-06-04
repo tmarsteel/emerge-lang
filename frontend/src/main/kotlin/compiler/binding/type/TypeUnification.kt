@@ -19,7 +19,7 @@ interface TypeUnification {
     fun plus(variable: TypeVariable, binding: BoundTypeReference, assignmentLocation: Span): TypeUnification
     fun plusReporting(reporting: Reporting): TypeUnification
 
-    fun doTreatingNonUnifiableAsOutOfBounds(parameter: BoundTypeParameter, argument: BoundTypeArgument, action: (TypeUnification) -> TypeUnification): TypeUnification {
+    fun doTreatingNonUnifiableAsOutOfBounds(parameter: BoundTypeParameter, argument: BoundTypeReference, action: (TypeUnification) -> TypeUnification): TypeUnification {
         return DecoratingTypeUnification.doWithDecorated(ValueNotAssignableAsArgumentOutOfBounds(this, parameter, argument), action)
     }
 
@@ -78,16 +78,17 @@ interface TypeUnification {
                     }
                 }
 
-                val nextUnification = unification.doTreatingNonUnifiableAsOutOfBounds(parameter, argument) { subUnification ->
-                    parameter.bound.unify(argument, argument.span ?: Span.UNKNOWN, subUnification)
+                val argumentType = argument.asBoundTypeReference()
+                val nextUnification = unification.doTreatingNonUnifiableAsOutOfBounds(parameter, argumentType) { subUnification ->
+                    parameter.bound.unify(argumentType, argumentType.span ?: Span.UNKNOWN, subUnification)
                 }
                 val hadErrors = nextUnification.getErrorsNotIn(unification).any()
-                unification = nextUnification.plus(TypeVariable(parameter), if (!hadErrors) argument else parameter.bound, argument.span ?: Span.UNKNOWN)
+                unification = nextUnification.plus(TypeVariable(parameter), if (!hadErrors) argumentType else parameter.bound, argumentType.span ?: Span.UNKNOWN)
             }
 
             for (i in arguments.size..typeParameters.lastIndex) {
                 unification = unification.plusReporting(
-                    Reporting.missingTypeArgument(typeParameters[i], arguments.lastOrNull()?.span ?: argumentsLocation)
+                    Reporting.missingTypeArgument(typeParameters[i], arguments.lastOrNull()?.astNode?.span ?: argumentsLocation)
                 )
             }
             if (arguments.size > typeParameters.size) {
@@ -114,13 +115,13 @@ private class DefaultTypeUnification private constructor(
 
     override fun plus(variable: TypeVariable, binding: BoundTypeReference, assignmentLocation: Span): TypeUnification {
         val previousBinding = bindings[variable]
-        if (previousBinding is BoundTypeArgument) {
+        if (previousBinding is BoundTypeFromArgument) {
             // type has been fixed explicitly -> no rebinding
             return this
         }
 
         val newBinding = when {
-            binding is BoundTypeArgument -> binding
+            binding is BoundTypeFromArgument -> binding
             else -> previousBinding?.closestCommonSupertypeWith(binding) ?: binding
         }
 
@@ -173,7 +174,7 @@ private abstract class DecoratingTypeUnification<Self : DecoratingTypeUnificatio
 private class ValueNotAssignableAsArgumentOutOfBounds(
     override val undecorated: TypeUnification,
     private val parameter: BoundTypeParameter,
-    private val argument: BoundTypeArgument,
+    private val argument: BoundTypeReference,
 ) : DecoratingTypeUnification<ValueNotAssignableAsArgumentOutOfBounds>() {
     override val bindings get() = undecorated.bindings
     override val reportings get() = undecorated.reportings

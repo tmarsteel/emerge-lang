@@ -1,12 +1,12 @@
 package compiler.reportings
 
 import compiler.ast.type.TypeParameter
-import compiler.binding.type.BoundTypeArgument
+import compiler.binding.type.BoundTypeReference
 import compiler.lexer.Span
 
 class TypeArgumentOutOfBoundsReporting(
     val parameter: TypeParameter,
-    val argument: BoundTypeArgument,
+    val argument: BoundTypeReference,
     val reason: String,
 ) : Reporting(
     Level.ERROR,

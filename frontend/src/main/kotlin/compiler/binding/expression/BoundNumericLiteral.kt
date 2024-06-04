@@ -25,8 +25,10 @@ import compiler.binding.SideEffectPrediction
 import compiler.binding.basetype.BoundBaseType
 import compiler.binding.context.CTContext
 import compiler.binding.context.ExecutionScopedCTContext
+import compiler.binding.type.BoundTypeFromArgument
 import compiler.binding.type.BoundTypeReference
 import compiler.binding.type.CoreTypes
+import compiler.binding.type.NullableTypeReference
 import compiler.binding.type.RootResolvedTypeReference
 import compiler.handleCyclicInvocation
 import compiler.reportings.NothrowViolationReporting
@@ -64,22 +66,25 @@ open class BoundNumericLiteral(
 
     protected var expectedNumericType: BoundBaseType? = null
     override fun setExpectedEvaluationResultType(type: BoundTypeReference) {
-        if (type !is RootResolvedTypeReference) {
-            return
+        when (type) {
+            is BoundTypeFromArgument -> return setExpectedEvaluationResultType(type.effectiveType)
+            is NullableTypeReference -> return setExpectedEvaluationResultType(type.nested)
+            is RootResolvedTypeReference -> {
+                if (!type.baseType.isCoreNumericType) {
+                    return
+                }
+
+                // assure completed
+                handleCyclicInvocation(
+                    context = this,
+                    action = { type.baseType.semanticAnalysisPhase1() },
+                    onCycle = { }
+                )
+
+                expectedNumericType = type.baseType
+            }
+            else -> {}
         }
-
-        if (!type.baseType.isCoreNumericType) {
-            return
-        }
-
-        // assure completed
-        handleCyclicInvocation(
-            context = this,
-            action = { type.baseType.semanticAnalysisPhase1() },
-            onCycle = { }
-        )
-
-        expectedNumericType = type.baseType
     }
 
     override val isEvaluationResultReferenceCounted = false

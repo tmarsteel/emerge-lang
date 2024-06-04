@@ -10,7 +10,7 @@ class TypeArgumentVarianceMismatchReporting(
 ) : Reporting(
     Level.ERROR,
     "The variance in the type argument conflicts with the variance on the declaration of ${parameter.name.span} (declared as ${parameter.variance.name.lowercase()})",
-    argument.span ?: Span.UNKNOWN,
+    argument.astNode.span ?: Span.UNKNOWN,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

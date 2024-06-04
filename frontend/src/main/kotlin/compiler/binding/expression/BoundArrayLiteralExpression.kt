@@ -86,7 +86,6 @@ class BoundArrayLiteralExpression(
             listOf(BoundTypeArgument(
                 context,
                 TypeArgument(TypeVariance.UNSPECIFIED, TypeReference("_")),
-                TypeVariance.UNSPECIFIED,
                 elementType,
             ))
         )
@@ -125,7 +124,7 @@ class BoundArrayLiteralExpression(
             return
         }
 
-        expectedElementType = type.arguments?.firstOrNull()?.type ?: return
+        expectedElementType = type.arguments?.firstOrNull()?.asBoundTypeReference() ?: return
         elements.forEach { it.setExpectedEvaluationResultType(expectedElementType!!) }
     }
 
@@ -146,7 +145,7 @@ class BoundArrayLiteralExpression(
             .toBackendIr()
 
         val irType = type!!.toBackendIr()
-        val irElementType = (type as RootResolvedTypeReference).arguments!!.single().type.toBackendIr()
+        val irElementType = (type as RootResolvedTypeReference).arguments!!.single().asBoundTypeReference().toBackendIr()
 
         return buildInvocationLikeIr(
             elements,

@@ -66,9 +66,9 @@ sealed class GenericTypeReference : BoundTypeReference {
                 assignmentLocation,
             ))
             is TypeVariable -> assigneeType.flippedUnify(this, assignmentLocation, carry)
-            is BoundTypeArgument -> when (assigneeType.variance) {
+            is BoundTypeFromArgument -> when (assigneeType.argument.variance) {
                 TypeVariance.OUT,
-                TypeVariance.UNSPECIFIED -> unify(assigneeType.type, assignmentLocation, carry)
+                TypeVariance.UNSPECIFIED -> unify(assigneeType.effectiveType, assignmentLocation, carry)
                 TypeVariance.IN -> unify(context.swCtx.typeParameterDefaultBound, assignmentLocation, carry)
             }
             is GenericTypeReference -> {
@@ -103,7 +103,7 @@ sealed class GenericTypeReference : BoundTypeReference {
                     effectiveBound.closestCommonSupertypeWith(other.effectiveBound)
                 }
             }
-            is BoundTypeArgument -> other.closestCommonSupertypeWith(this)
+            is BoundTypeFromArgument -> other.closestCommonSupertypeWith(this)
             is TypeVariable -> throw InternalCompilerError("not implemented as it was assumed that this can never happen")
             else -> effectiveBound.closestCommonSupertypeWith(other)
         }

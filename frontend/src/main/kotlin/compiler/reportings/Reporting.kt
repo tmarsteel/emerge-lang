@@ -158,11 +158,14 @@ abstract class Reporting internal constructor(
         fun varianceOnFunctionTypeParameter(parameter: BoundTypeParameter)
             = VarianceOnFunctionTypeParameterReporting(parameter.astNode)
 
+        fun varianceOnInvocationTypeArgument(argument: BoundTypeArgument)
+            = VarianceOnInvocationTypeArgumentReporting(argument.astNode)
+
         fun missingTypeArgument(parameter: BoundTypeParameter, span: Span)
             = MissingTypeArgumentReporting(parameter.astNode, span)
 
         fun superfluousTypeArguments(nExpectedArguments: Int, firstSuperfluousArgument: BoundTypeArgument)
-            = SuperfluousTypeArgumentsReporting(nExpectedArguments, firstSuperfluousArgument.astNode)
+            = SuperfluousTypeArgumentsReporting(nExpectedArguments, firstSuperfluousArgument)
 
         fun typeArgumentVarianceMismatch(parameter: BoundTypeParameter, argument: BoundTypeArgument)
             = TypeArgumentVarianceMismatchReporting(parameter.astNode, argument)
@@ -170,7 +173,7 @@ abstract class Reporting internal constructor(
         fun typeArgumentVarianceSuperfluous(argument: BoundTypeArgument)
             = TypeArgumentVarianceSuperfluousReporting(argument)
 
-        fun typeArgumentOutOfBounds(parameter: BoundTypeParameter, argument: BoundTypeArgument, reason: String)
+        fun typeArgumentOutOfBounds(parameter: BoundTypeParameter, argument: BoundTypeReference, reason: String)
             = TypeArgumentOutOfBoundsReporting(parameter.astNode, argument, reason)
 
         fun unsupportedTypeUsageVariance(useSite: TypeUseSite, erroneousVariance: TypeVariance)

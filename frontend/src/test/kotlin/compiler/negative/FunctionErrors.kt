@@ -20,6 +20,7 @@ import compiler.reportings.UnresolvableFunctionOverloadReporting
 import compiler.reportings.UnsupportedCallingConventionReporting
 import compiler.reportings.ValueNotAssignableReporting
 import compiler.reportings.VarianceOnFunctionTypeParameterReporting
+import compiler.reportings.VarianceOnInvocationTypeArgumentReporting
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.inspectors.forOne
 import io.kotest.matchers.collections.haveSize
@@ -366,6 +367,24 @@ class FunctionErrors : FreeSpec({
                 fn foo<S32>() {}
             """.trimIndent())
                 .shouldReport<TypeParameterNameConflictReporting>()
+        }
+
+        "variance on invocation" {
+            validateModule("""
+                fn foo<X>() {}
+                fn test() {
+                    foo::<in X>()
+                }
+            """.trimIndent())
+                .shouldReport<VarianceOnInvocationTypeArgumentReporting>()
+
+            validateModule("""
+                fn foo<X>() {}
+                fn test() {
+                    foo::<out X>()
+                }
+            """.trimIndent())
+                .shouldReport<VarianceOnInvocationTypeArgumentReporting>()
         }
     }
 

@@ -2,11 +2,14 @@ package compiler.binding
 
 import compiler.ast.AssignmentStatement
 import compiler.ast.type.TypeMutability
+import compiler.ast.type.TypeReference
+import compiler.ast.type.TypeVariance
 import compiler.binding.SideEffectPrediction.Companion.combineSequentialExecution
 import compiler.binding.context.CTContext
 import compiler.binding.context.ExecutionScopedCTContext
 import compiler.binding.context.MutableExecutionScopedCTContext
 import compiler.binding.expression.BoundExpression
+import compiler.binding.type.BoundTypeFromArgument
 import compiler.binding.type.BoundTypeReference
 import compiler.binding.type.IrGenericTypeReferenceImpl
 import compiler.binding.type.IrParameterizedTypeImpl
@@ -84,6 +87,11 @@ abstract class BoundAssignmentStatement(
                 assignmentTargetType?.also { targetType ->
                     assignedType.evaluateAssignabilityTo(targetType, toAssignExpression.declaration.span)
                         ?.let(reportings::add)
+
+                    val targetTypeNotNullable = targetType.withCombinedNullability(TypeReference.Nullability.NOT_NULLABLE)
+                    if (targetTypeNotNullable is BoundTypeFromArgument && targetTypeNotNullable.argument.variance == TypeVariance.OUT) {
+                        reportings.add(Reporting.illegalAssignment("Cannot assign to a reference of an out-variant type", this))
+                    }
                 }
             }
 

@@ -94,7 +94,7 @@ class TypeVariable private constructor(
         return when (assigneeType) {
             is RootResolvedTypeReference,
             is GenericTypeReference,
-            is BoundTypeArgument -> {
+            is BoundTypeFromArgument -> {
                 val newCarry = carry.plus(this, assigneeType, assignmentLocation)
                 val selfBinding = newCarry.bindings[this] ?: return newCarry
                 selfBinding.unify(assigneeType, assignmentLocation, newCarry)

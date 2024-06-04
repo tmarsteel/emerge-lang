@@ -162,7 +162,7 @@ class ResolvedTypeReferenceTest : FreeSpec() { init {
                 ) as RootResolvedTypeReference
 
                 "projects onto type parameters with $outerMutability" {
-                    type.arguments!!.single().type.mutability shouldBe outerMutability
+                    type.arguments!!.single().asBoundTypeReference().mutability shouldBe outerMutability
                 }
             }
         }

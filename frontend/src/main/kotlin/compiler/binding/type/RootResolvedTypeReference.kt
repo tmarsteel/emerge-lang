@@ -38,7 +38,11 @@ class RootResolvedTypeReference private constructor(
     override val span = original?.declaringNameToken?.span
 
     override val inherentTypeBindings by lazy {
-        TypeUnification.fromExplicit(baseType.typeParameters ?: emptyList(), arguments, span ?: Span.UNKNOWN)
+        TypeUnification.fromExplicit(
+            baseType.typeParameters ?: emptyList(),
+            arguments,
+            span ?: Span.UNKNOWN
+        )
     }
 
     override val destructorThrowBehavior get() = when (baseType.kind) {
@@ -108,7 +112,11 @@ class RootResolvedTypeReference private constructor(
     }
 
     override fun hasSameBaseTypeAs(other: BoundTypeReference): Boolean {
-        return other is RootResolvedTypeReference && this.baseType == other.baseType
+        return when (other) {
+            is RootResolvedTypeReference -> this.baseType == other.baseType
+            is BoundTypeFromArgument -> hasSameBaseTypeAs(other.effectiveType)
+            else -> false
+        }
     }
 
     override fun closestCommonSupertypeWith(other: BoundTypeReference): BoundTypeReference {
@@ -126,7 +134,7 @@ class RootResolvedTypeReference private constructor(
                 )
             }
             is GenericTypeReference -> other.closestCommonSupertypeWith(this)
-            is BoundTypeArgument -> other.closestCommonSupertypeWith(this)
+            is BoundTypeFromArgument -> other.closestCommonSupertypeWith(this)
             is TypeVariable -> throw InternalCompilerError("not implemented as it was assumed that this can never happen")
         }
     }
@@ -170,16 +178,16 @@ class RootResolvedTypeReference private constructor(
                 return selfArgs
                     .zip(assigneeArgs)
                     .fold(carry) { innerCarry, (targetArg, sourceArg) ->
-                        targetArg.unify(sourceArg, assignmentLocation, innerCarry)
+                        targetArg.asBoundTypeReference().unify(sourceArg.asBoundTypeReference(), assignmentLocation, innerCarry)
                     }
             }
             is UnresolvedType -> return unify(assigneeType.standInType, assignmentLocation, carry)
             is GenericTypeReference -> return unify(assigneeType.effectiveBound, assignmentLocation, carry)
-            is BoundTypeArgument -> {
+            is BoundTypeFromArgument -> {
                 // this branch is PROBABLY only taken when verifying the bound of a type parameter against an argument
                 // in this case this is the bound and assigneeType is the argument
                 // variance is not important in that scenario because type arguments must be subtypes of the parameters bounds
-                return unify(assigneeType.type, assignmentLocation, carry)
+                return unify(assigneeType.effectiveType, assignmentLocation, carry)
             }
             is TypeVariable -> return assigneeType.flippedUnify(this, assignmentLocation, carry)
             is NullableTypeReference -> return carry.plusReporting(
@@ -236,7 +244,7 @@ class RootResolvedTypeReference private constructor(
         return IrParameterizedTypeImpl(
             raw,
             baseType.typeParameters.zip(arguments).associate { (param, arg) ->
-                param.name to arg.toBackendIrAsTypeArgument()
+                param.name to arg.toBackendIr()
             }
         )
     }

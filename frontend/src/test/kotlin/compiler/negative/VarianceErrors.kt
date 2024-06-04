@@ -1,12 +1,15 @@
 package compiler.compiler.negative
 
 import compiler.CoreIntrinsicsModule
+import compiler.ast.type.TypeArgument
 import compiler.ast.type.TypeReference
+import compiler.ast.type.TypeVariance
 import compiler.ast.type.TypeVariance.IN
 import compiler.ast.type.TypeVariance.OUT
 import compiler.ast.type.TypeVariance.UNSPECIFIED
 import compiler.binding.basetype.BoundBaseType
 import compiler.binding.type.BoundTypeArgument
+import compiler.binding.type.BoundTypeFromArgument
 import compiler.binding.type.BoundTypeReference
 import compiler.binding.type.RootResolvedTypeReference
 import compiler.compiler.ast.type.getTestType
@@ -18,6 +21,7 @@ import io.kotest.matchers.MatcherResult
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNot
+import io.mockk.every
 import io.mockk.mockk
 
 class VarianceErrors : FreeSpec({
@@ -30,20 +34,28 @@ class VarianceErrors : FreeSpec({
     val Child = swCtx.getTestType("Child")
     val ctCtx = Parent.context
 
-    fun varIn(t: BoundBaseType) = BoundTypeArgument(ctCtx, mockk(), IN, t.baseReference)
-    fun varOut(t: BoundBaseType) = BoundTypeArgument(ctCtx, mockk(), OUT, t.baseReference)
-    fun varExact(t: BoundBaseType) = BoundTypeArgument(ctCtx, mockk(), UNSPECIFIED, t.baseReference)
+    fun varType(t: BoundBaseType, variance: TypeVariance): BoundTypeFromArgument {
+        val astNode = TypeArgument(variance, mockk() {
+            every { span } returns Span.UNKNOWN
+        })
+        val effectiveType = t.baseReference
+        val argument = BoundTypeArgument(ctCtx, astNode, effectiveType)
+        return BoundTypeFromArgument(argument, effectiveType)
+    }
+    fun varIn(t: BoundBaseType) = varType(t, IN)
+    fun varOut(t: BoundBaseType) = varType(t, OUT)
+    fun varExact(t: BoundBaseType) = varType(t, UNSPECIFIED)
 
-    fun arrayOf(element: BoundTypeArgument): BoundTypeReference = RootResolvedTypeReference(
+    fun arrayTypeOf(element: BoundTypeArgument): BoundTypeReference = RootResolvedTypeReference(
         TypeReference("Array"),
         swCtx.getPackage(CoreIntrinsicsModule.NAME)!!.resolveBaseType("Array")!!,
         listOf(element),
     )
 
-    fun beAssignableTo(target: BoundTypeArgument): Matcher<BoundTypeArgument> = object : Matcher<BoundTypeArgument> {
-        override fun test(value: BoundTypeArgument): MatcherResult {
-            val sourceType = arrayOf(value)
-            val targetType = arrayOf(target)
+    fun beAssignableTo(target: BoundTypeFromArgument): Matcher<BoundTypeFromArgument> = object : Matcher<BoundTypeFromArgument> {
+        override fun test(value: BoundTypeFromArgument): MatcherResult {
+            val sourceType = arrayTypeOf(value.argument)
+            val targetType = arrayTypeOf(target.argument)
             val error = sourceType.evaluateAssignabilityTo(targetType, Span.UNKNOWN)
             return object : MatcherResult {
                 override fun failureMessage() = "$sourceType should be assignable to $targetType, but its not: ${error?.reason}"

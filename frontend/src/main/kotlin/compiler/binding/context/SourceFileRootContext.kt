@@ -10,7 +10,6 @@ import compiler.binding.BoundOverloadSet
 import compiler.binding.BoundVariable
 import compiler.binding.BoundVisibility
 import compiler.binding.basetype.BoundBaseType
-import compiler.binding.type.BoundTypeArgument
 import compiler.binding.type.BoundTypeParameter
 import compiler.binding.type.BoundTypeReference
 import compiler.binding.type.UnresolvedType
@@ -72,7 +71,7 @@ class SourceFileRootContext(
             override fun resolveType(ref: TypeReference, fromOwnFileOnly: Boolean): BoundTypeReference = UnresolvedType(
                 this,
                 ref,
-                ref.arguments?.map { BoundTypeArgument(this, it, it.variance, this.resolveType(it.type)) },
+                ref.arguments?.map(::resolveType)
             )
             override fun getToplevelFunctionOverloadSetsBySimpleName(name: String): Collection<BoundOverloadSet<*>> = emptySet()
 

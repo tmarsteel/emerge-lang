@@ -12,7 +12,7 @@ import io.github.tmarsteel.emerge.backend.api.ir.IrType
 class UnresolvedType private constructor(
     val standInType: BoundTypeReference,
     private val reference: TypeReference,
-    val parameters: List<BoundTypeArgument>?,
+    val arguments: List<BoundTypeArgument>?,
 ) : BoundTypeReference {
     constructor(context: CTContext, reference: TypeReference, parameters: List<BoundTypeArgument>?) : this(
         context.swCtx.unresolvableReplacementType,
@@ -28,14 +28,14 @@ class UnresolvedType private constructor(
     override val destructorThrowBehavior = SideEffectPrediction.NEVER // avoid complaining extra
 
     override fun validate(forUsage: TypeUseSite): Collection<Reporting> {
-        return (parameters ?: emptyList()).flatMap { it.validate(forUsage.deriveIrrelevant()) } + setOf(Reporting.unknownType(reference))
+        return (arguments ?: emptyList()).flatMap { it.validate(forUsage.deriveIrrelevant()) } + setOf(Reporting.unknownType(reference))
     }
 
     override fun withMutability(modifier: TypeMutability?): BoundTypeReference {
         return UnresolvedType(
             standInType.withMutability(modifier),
             reference,
-            parameters?.map { it.defaultMutabilityTo(modifier) },
+            arguments?.map { it.defaultMutabilityTo(modifier) },
         )
     }
 
@@ -43,7 +43,7 @@ class UnresolvedType private constructor(
         return UnresolvedType(
             standInType.withCombinedMutability(mutability),
             reference,
-            parameters?.map { it.defaultMutabilityTo(mutability) },
+            arguments?.map { it.defaultMutabilityTo(mutability) },
         )
     }
 
@@ -51,7 +51,7 @@ class UnresolvedType private constructor(
         return UnresolvedType(
             standInType.withCombinedNullability(nullability),
             reference,
-            parameters,
+            arguments,
         )
     }
 
@@ -59,7 +59,7 @@ class UnresolvedType private constructor(
         return UnresolvedType(
             standInType.withTypeVariables(variables),
             reference,
-            parameters?.map { it.withTypeVariables(variables) }
+            arguments?.map { it.withTypeVariables(variables) }
         )
     }
 
@@ -67,7 +67,7 @@ class UnresolvedType private constructor(
         return when(assigneeType) {
             is RootResolvedTypeReference,
             is GenericTypeReference,
-            is BoundTypeArgument -> standInType.unify(assigneeType, assignmentLocation, carry)
+            is BoundTypeFromArgument -> standInType.unify(assigneeType, assignmentLocation, carry)
             is UnresolvedType -> standInType.unify(assigneeType.standInType, assignmentLocation, carry)
             is TypeVariable -> assigneeType.flippedUnify(this.standInType, assignmentLocation, carry)
             is NullableTypeReference -> standInType.unify(assigneeType, assignmentLocation, carry)
@@ -78,7 +78,7 @@ class UnresolvedType private constructor(
         return UnresolvedType(
             standInType.defaultMutabilityTo(mutability),
             reference,
-            parameters?.map { it.defaultMutabilityTo(mutability) },
+            arguments?.map { it.defaultMutabilityTo(mutability) },
         )
     }
 
