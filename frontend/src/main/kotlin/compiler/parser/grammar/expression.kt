@@ -19,48 +19,13 @@
 package compiler.parser.grammar
 
 import compiler.InternalCompilerError
-import compiler.ast.AstBreakExpression
-import compiler.ast.AstCodeChunk
-import compiler.ast.AstContinueExpression
-import compiler.ast.AstSemanticOperator
-import compiler.ast.AstThrowExpression
-import compiler.ast.Executable
-import compiler.ast.IfExpression
-import compiler.ast.ReturnExpression
-import compiler.ast.TypeArgumentBundle
-import compiler.ast.expression.ArrayLiteralExpression
-import compiler.ast.expression.AstCatchBlockExpression
-import compiler.ast.expression.AstReflectExpression
-import compiler.ast.expression.AstTryCatchExpression
-import compiler.ast.expression.BooleanLiteralExpression
-import compiler.ast.expression.IdentifierExpression
-import compiler.ast.expression.NullLiteralExpression
-import compiler.ast.expression.NumericLiteralExpression
-import compiler.ast.expression.ParenthesisedExpression
-import compiler.ast.expression.StringLiteralExpression
-import compiler.ast.expression.UnaryExpression
+import compiler.ast.*
+import compiler.ast.expression.*
 import compiler.ast.type.TypeArgument
 import compiler.ast.type.TypeReference
-import compiler.lexer.IdentifierToken
-import compiler.lexer.Keyword
-import compiler.lexer.Keyword.CATCH
-import compiler.lexer.Keyword.ELSE
-import compiler.lexer.Keyword.IF
-import compiler.lexer.Keyword.REFLECT
-import compiler.lexer.Keyword.TRY
-import compiler.lexer.KeywordToken
-import compiler.lexer.NumericLiteralToken
-import compiler.lexer.Operator
-import compiler.lexer.OperatorToken
-import compiler.lexer.StringLiteralContentToken
-import compiler.parser.BinaryExpressionPostfix
-import compiler.parser.CastExpressionPostfix
-import compiler.parser.ExpressionPostfix
-import compiler.parser.IndexAccessExpressionPostfix
-import compiler.parser.InstanceOfExpressionPostfix
-import compiler.parser.InvocationExpressionPostfix
-import compiler.parser.MemberAccessExpressionPostfix
-import compiler.parser.NotNullExpressionPostfix
+import compiler.lexer.*
+import compiler.lexer.Keyword.*
+import compiler.parser.*
 import compiler.parser.grammar.dsl.astTransformation
 import compiler.parser.grammar.dsl.eitherOf
 import compiler.parser.grammar.dsl.mapResult
@@ -470,9 +435,7 @@ val ExpressionPostfixCast = sequence("cast") {
     }
 
 val ExpressionPostfixInstanceOf = sequence("instance-of") {
-    eitherOf {
-        keyword(Keyword.INSTANCEOF)
-    }
+    keyword(Keyword.INSTANCEOF)
     ref(Type)
 }
     .astTransformation { tokens ->
@@ -513,10 +476,8 @@ val BinaryOperator = eitherOf {
     }
 
 val ExpressionPostfixBinaryOperation = sequence("binary expression") {
-    repeatingAtLeastOnce {
-        ref(BinaryOperator)
-        ref(ExpressionExcludingBinaryPostfix)
-    }
+    ref(BinaryOperator)
+    ref(ExpressionExcludingBinaryPostfix)
 }
     .astTransformation { tokens ->
         BinaryExpressionPostfix(tokens.remainingToList())
@@ -538,8 +499,24 @@ val ExpressionPostfix = eitherOf {
     .mapResult { it as ExpressionPostfix<AstExpression> }
 
 private fun astTransformOneExpressionWithOptionalPostfixes(tokens: TransactionalSequence<Any, *>): AstExpression {
-    val expression = tokens.next()!! as AstExpression
-    return tokens
-        .remainingToList()
-        .fold(expression) { expr, postfix -> (postfix as ExpressionPostfix<*>).modify(expr) }
+    var expression = tokens.next()!! as AstExpression
+
+    // we have to find runs of BinaryOperationPostfix to correctly account for operator precedence
+    tokens@while (tokens.hasNext()) {
+        val postfix = tokens.next() as ExpressionPostfix<*>
+        if (postfix !is BinaryExpressionPostfix) {
+            expression = postfix.modify(expression)
+            continue@tokens
+        }
+
+        val binaryPostfixes = ArrayList<BinaryExpressionPostfix>()
+        binaryPostfixes.add(postfix)
+        while (tokens.peek() is BinaryExpressionPostfix) {
+            binaryPostfixes.add(tokens.next() as BinaryExpressionPostfix)
+        }
+
+        expression = BinaryExpressionPostfix.buildBinaryExpression(expression, binaryPostfixes)
+    }
+
+    return expression
 }

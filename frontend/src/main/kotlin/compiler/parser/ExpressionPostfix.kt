@@ -3,20 +3,10 @@ package compiler.parser
 import compiler.InternalCompilerError
 import compiler.ast.AstSemanticOperator
 import compiler.ast.Expression
-import compiler.ast.expression.AstCastExpression
-import compiler.ast.expression.AstIndexAccessExpression
-import compiler.ast.expression.AstInstanceOfExpression
-import compiler.ast.expression.BinaryExpression
-import compiler.ast.expression.InvocationExpression
-import compiler.ast.expression.MemberAccessExpression
-import compiler.ast.expression.NotNullExpression
+import compiler.ast.expression.*
 import compiler.ast.type.TypeArgument
 import compiler.ast.type.TypeReference
-import compiler.lexer.IdentifierToken
-import compiler.lexer.Keyword
-import compiler.lexer.KeywordToken
-import compiler.lexer.Operator
-import compiler.lexer.OperatorToken
+import compiler.lexer.*
 
 /**
  * Given the expression itself, it returns a new expression that contains the information about the postfix.
@@ -86,7 +76,21 @@ class BinaryExpressionPostfix(
     val operatorsOrExpressions: List<OperatorOrExpression>,
 ) : ExpressionPostfix<Expression> {
     override fun modify(expr: Expression): Expression {
-        return buildBinaryExpressionAst(listOf(expr) + operatorsOrExpressions)
+        throw UnsupportedOperationException("Use ${Companion::buildBinaryExpression} instead")
+    }
+
+    companion object {
+        fun buildBinaryExpression(first: Expression, postfixes: List<BinaryExpressionPostfix>): Expression {
+            val operatorsOrExprs = ArrayList<OperatorOrExpression>(1 + postfixes.sumOf { it.operatorsOrExpressions.size })
+            operatorsOrExprs.add(first)
+            postfixes.forEach {
+                it.operatorsOrExpressions.forEach { opOrExpr ->
+                    operatorsOrExprs.add(opOrExpr)
+                }
+            }
+
+            return buildBinaryExpressionAst(operatorsOrExprs)
+        }
     }
 }
 
