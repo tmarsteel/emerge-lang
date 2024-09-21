@@ -27,6 +27,7 @@ enum class Keyword(val text: String)
 
     FUNCTION("fn"),
     CONSTRUCTOR("constructor"),
+    MIXIN("mixin"),
     DESTRUCTOR("destructor"),
     VAR("var"),
     SET("set"),

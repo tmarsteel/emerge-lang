@@ -3,6 +3,7 @@ package emerge.core
 import emerge.std.io.PrintStream
 import emerge.std.collections.ArrayList
 import emerge.core.reflection.reflectType
+import emerge.platform.collectStackTrace
 
 export interface Throwable : Printable {
     // TODO: make into virtual property
@@ -41,6 +42,25 @@ export interface Throwable : Printable {
     }
 }
 export interface Error : Throwable {}
+
+// implements boilerplate code for all Throwables; intended to be used
+// as a delegation implementation in Throwables.
+// implements Error so it can be used in both Error and Exception classes
+export class ThrowableTrait : Error {
+	message: String = init
+
+    private var stackTrace: const ArrayList<StackTraceElement>? = null
+
+    export override read fn fillStackTrace(self: mut _) {
+        set self.stackTrace = self.stackTrace ?: collectStackTrace(2 as U32, false)
+    }
+
+    export override nothrow fn getStackTrace(self) -> const ArrayList<StackTraceElement>? {
+        return self.stackTrace
+    }
+
+    export override nothrow fn getMessage(self) = self.message
+}
 
 export class StackTraceElement : Printable {
     export address: UWord = init

@@ -22,6 +22,7 @@ import compiler.InternalCompilerError
 import compiler.ast.AssignmentStatement
 import compiler.ast.AstCodeChunk
 import compiler.ast.AstDoWhileLoop
+import compiler.ast.AstMixinStatement
 import compiler.ast.AstWhileLoop
 import compiler.ast.Statement
 import compiler.lexer.DelimitedIdentifierContentToken
@@ -114,6 +115,16 @@ val DoWhileLoop = sequence("do-while loop") {
         )
     }
 
+val MixinStatement = sequence("mixin statement") {
+    keyword(Keyword.MIXIN)
+    ref(Expression)
+}
+    .astTransformation { tokens ->
+        val mixinKeyword = tokens.next() as KeywordToken
+        val value = tokens.next() as AstExpression
+        AstMixinStatement(mixinKeyword, value)
+    }
+
 val LineOfCode = sequence {
     eitherOf {
         ref(AssignmentStatement)
@@ -123,6 +134,7 @@ val LineOfCode = sequence {
         ref(Expression)
         ref(WhileLoop)
         ref(DoWhileLoop)
+        ref(MixinStatement)
     }
 
     operator(Operator.NEWLINE)
