@@ -1,5 +1,7 @@
 package compiler.reportings
 
+import compiler.ast.VariableOwnership
+import compiler.ast.type.TypeMutability
 import compiler.binding.BoundMemberFunction
 import compiler.binding.basetype.BoundBaseType
 import compiler.lexer.Keyword
@@ -21,7 +23,18 @@ class AbstractInheritedFunctionNotImplementedReporting(
         signature += "("
         var parameterTypesForSignature = functionToImplement.parameterTypes
         if (functionToImplement.declaresReceiver) {
+            val selfParam = functionToImplement.parameters.declaredReceiver!!
+            if (selfParam.ownershipAtDeclarationTime != VariableOwnership.BORROWED) {
+                signature += selfParam.ownershipAtDeclarationTime.name.lowercase()
+                signature += " "
+            }
             signature += "self"
+            val mutability = selfParam.typeAtDeclarationTime?.mutability
+            if (mutability != null && mutability != TypeMutability.READONLY) {
+                signature += ": "
+                signature += mutability.keyword.text
+                signature += " _"
+            }
             parameterTypesForSignature = parameterTypesForSignature.drop(1)
             if (parameterTypesForSignature.isNotEmpty()) {
                 signature += ", "
