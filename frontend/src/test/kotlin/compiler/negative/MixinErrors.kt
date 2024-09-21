@@ -85,7 +85,7 @@ class MixinErrors : FreeSpec({
             }
         """.trimIndent())
             .shouldReport<VariableUsedAfterLifetimeReporting> {
-                it.variable.name shouldBe "mixinValue"
+                it.variable.name.value shouldBe "mixinValue"
             }
     }
 

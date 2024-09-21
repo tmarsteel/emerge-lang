@@ -23,7 +23,7 @@ class BoundMixinStatement(
     override val declaration: AstMixinStatement,
 ) : BoundStatement<AstMixinStatement> {
     override val context = expression.context
-    override val modifiedContext = MutableExecutionScopedCTContext.deriveFrom(expression.context)
+    override val modifiedContext = MutableExecutionScopedCTContext.deriveFrom(expression.modifiedContext)
 
     override val throwBehavior: SideEffectPrediction? get()= expression.throwBehavior
     override val returnBehavior: SideEffectPrediction? get()= expression.returnBehavior
