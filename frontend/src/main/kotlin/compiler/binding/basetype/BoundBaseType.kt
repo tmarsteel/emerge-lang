@@ -289,11 +289,16 @@ class BoundBaseType(
                     .toCollection(Collections.newSetFromMap(IdentityHashMap()))
 
                 superTypes.inheritedMemberFunctions
+                    .asSequence()
                     .filter { it.isAbstract }
-                    .forEach { abstractSuperFn ->
-                        if (abstractSuperFn !in overriddenSuperFns) {
-                            reportings.add(Reporting.abstractInheritedFunctionNotImplemented(this, abstractSuperFn))
-                        }
+                    .filter { it !in overriddenSuperFns }
+                    .filter { abstractFn ->
+                        val declaredOn = abstractFn.supertypeMemberFn.declaredOnType.baseReference
+                        val isMixedIn = mixins.any { mixin -> mixin.expression.type?.hasSameBaseTypeAs(declaredOn) ?: true }
+                        return@filter !isMixedIn
+                    }
+                    .forEach {
+                        reportings.add(Reporting.abstractInheritedFunctionNotImplemented(this, it))
                     }
             }
 
