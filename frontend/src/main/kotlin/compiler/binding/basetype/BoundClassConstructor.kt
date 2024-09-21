@@ -1,15 +1,32 @@
 package compiler.binding.basetype
 
-import compiler.ast.*
+import compiler.ast.AssignmentStatement
+import compiler.ast.AstCodeChunk
+import compiler.ast.BaseTypeConstructorDeclaration
+import compiler.ast.ParameterList
+import compiler.ast.VariableDeclaration
+import compiler.ast.VariableOwnership
 import compiler.ast.expression.IdentifierExpression
 import compiler.ast.expression.MemberAccessExpression
 import compiler.ast.type.TypeArgument
 import compiler.ast.type.TypeMutability
 import compiler.ast.type.TypeReference
 import compiler.ast.type.TypeVariance
-import compiler.binding.*
+import compiler.binding.BoundCodeChunk
+import compiler.binding.BoundExecutable
+import compiler.binding.BoundFunction
+import compiler.binding.BoundFunctionAttributeList
+import compiler.binding.BoundParameterList
+import compiler.binding.BoundVariable
+import compiler.binding.IrAssignmentStatementImpl
+import compiler.binding.IrAssignmentStatementTargetClassMemberVariableImpl
+import compiler.binding.IrAssignmentStatementTargetVariableImpl
+import compiler.binding.IrCodeChunkImpl
+import compiler.binding.SeanHelper
+import compiler.binding.SideEffectPrediction
 import compiler.binding.SideEffectPrediction.Companion.reduceSequentialExecution
 import compiler.binding.context.CTContext
+import compiler.binding.context.ExecutionScopedCTContext
 import compiler.binding.context.MutableExecutionScopedCTContext
 import compiler.binding.context.effect.PartialObjectInitialization
 import compiler.binding.context.effect.VariableInitialization
@@ -23,10 +40,27 @@ import compiler.binding.type.BoundTypeParameter
 import compiler.binding.type.IrSimpleTypeImpl
 import compiler.binding.type.RootResolvedTypeReference
 import compiler.handleCyclicInvocation
-import compiler.lexer.*
+import compiler.lexer.IdentifierToken
+import compiler.lexer.Keyword
+import compiler.lexer.KeywordToken
+import compiler.lexer.Operator
+import compiler.lexer.OperatorToken
+import compiler.lexer.Span
 import compiler.reportings.ClassMemberVariableNotInitializedDuringObjectConstructionReporting
+import compiler.reportings.Diagnosis
 import compiler.reportings.Reporting
-import io.github.tmarsteel.emerge.backend.api.ir.*
+import io.github.tmarsteel.emerge.backend.api.ir.IrAllocateObjectExpression
+import io.github.tmarsteel.emerge.backend.api.ir.IrAssignmentStatement
+import io.github.tmarsteel.emerge.backend.api.ir.IrClass
+import io.github.tmarsteel.emerge.backend.api.ir.IrCodeChunk
+import io.github.tmarsteel.emerge.backend.api.ir.IrConstructor
+import io.github.tmarsteel.emerge.backend.api.ir.IrExecutable
+import io.github.tmarsteel.emerge.backend.api.ir.IrFunction
+import io.github.tmarsteel.emerge.backend.api.ir.IrRegisterWeakReferenceStatement
+import io.github.tmarsteel.emerge.backend.api.ir.IrSimpleType
+import io.github.tmarsteel.emerge.backend.api.ir.IrTemporaryValueReference
+import io.github.tmarsteel.emerge.backend.api.ir.IrTypeMutability
+import io.github.tmarsteel.emerge.backend.api.ir.independentToString
 import io.github.tmarsteel.emerge.common.CanonicalElementName
 
 /**
@@ -55,7 +89,7 @@ class BoundClassConstructor(
         - contextWithSelfVar
             - contextWithParameters
      */
-    private val constructorFunctionRootContext = MutableExecutionScopedCTContext.functionRootIn(fileContextWithTypeParameters)
+    private val constructorFunctionRootContext = ConstructorFunctionRootContext(fileContextWithTypeParameters)
     override val context = fileContextWithTypeParameters
 
     override val declaredAt get() = declaration.span
@@ -350,7 +384,21 @@ class BoundClassConstructor(
             IrCodeChunkImpl(initIr),
         )
     }
+
     override fun toBackendIr(): IrFunction = backendIr
+
+    private inner class ConstructorFunctionRootContext(fileContextWithTypeParameters: CTContext) : MutableExecutionScopedCTContext(fileContextWithTypeParameters, true, true, ExecutionScopedCTContext.Repetition.EXACTLY_ONCE) {
+        override fun registerMixin(mixinStatement: BoundMixinStatement, diagnosis: Diagnosis): BoundBaseTypeMemberVariable {
+            when (val repetition = mixinStatement.context.getRepetitionBehaviorRelativeTo(this)) {
+                ExecutionScopedCTContext.Repetition.EXACTLY_ONCE -> {
+                    // all good
+                }
+                else -> diagnosis.add(Reporting.illegalMixinRepetition(mixinStatement, repetition))
+            }
+
+            return classDef.registerMixin(mixinStatement)
+        }
+    }
 }
 
 private class IrClassSimpleType(

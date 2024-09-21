@@ -20,14 +20,18 @@ package compiler.binding.basetype
 
 import compiler.InternalCompilerError
 import compiler.ast.AstCodeChunk
+import compiler.ast.AstVisibility
 import compiler.ast.BaseTypeConstructorDeclaration
 import compiler.ast.BaseTypeDeclaration
 import compiler.ast.BaseTypeDestructorDeclaration
+import compiler.ast.BaseTypeMemberVariableDeclaration
+import compiler.ast.VariableDeclaration
 import compiler.ast.type.TypeReference
 import compiler.binding.*
 import compiler.binding.context.CTContext
 import compiler.binding.type.BoundTypeParameter
 import compiler.binding.type.RootResolvedTypeReference
+import compiler.lexer.IdentifierToken
 import compiler.lexer.Keyword
 import compiler.lexer.KeywordToken
 import compiler.lexer.Span
@@ -63,9 +67,33 @@ class BoundBaseType(
             if (typeParameters.isNullOrEmpty()) null else throw InternalCompilerError("cannot use baseReference on types with parameters")
         )
 
-    val memberVariables: List<BoundBaseTypeMemberVariable> = entries.filterIsInstance<BoundBaseTypeMemberVariable>()
+    private val _memberVariables: MutableList<BoundBaseTypeMemberVariable> = entries.filterIsInstance<BoundBaseTypeMemberVariable>().toMutableList()
+    val memberVariables: List<BoundBaseTypeMemberVariable> = _memberVariables
     val declaredConstructors: Sequence<BoundClassConstructor> = entries.asSequence().filterIsInstance<BoundClassConstructor>()
     val declaredDestructors: Sequence<BoundClassDestructor> = entries.asSequence().filterIsInstance<BoundClassDestructor>()
+    private val _mixins = LinkedHashSet<BoundMixinStatement>()
+    val mixins: Set<BoundMixinStatement> = _mixins
+
+    fun registerMixin(mixin: BoundMixinStatement): BoundBaseTypeMemberVariable {
+        if (!_mixins.add(mixin)) {
+            throw InternalCompilerError("Mixin ${mixin.declaration} added to class twice")
+        }
+        val location = mixin.declaration.span.deriveGenerated()
+        val memberVariable = BaseTypeMemberVariableDeclaration(
+            VariableDeclaration(
+                location,
+                AstVisibility.Private(KeywordToken(Keyword.PRIVATE, span= location)),
+                null,
+                null,
+                IdentifierToken(mixin.context.findInternalVariableName("mixin"), location),
+                TypeReference(IdentifierToken("Any", location)),
+                null,
+            )
+        ).bindTo(mixin.context)
+        _memberVariables.add(memberVariable)
+
+        return memberVariable
+    }
 
     /**
      * Always `null` if [Kind.hasCtorsAndDtors] is `false`. If `true`, is initialized in
@@ -114,11 +142,11 @@ class BoundBaseType(
                 reportings.addAll(it.semanticAnalysisPhase1())
             }
 
-            memberVariables.duplicatesBy(BoundBaseTypeMemberVariable::name).forEach { (_, dupMembers) ->
+            _memberVariables.duplicatesBy(BoundBaseTypeMemberVariable::name).forEach { (_, dupMembers) ->
                 reportings.add(Reporting.duplicateBaseTypeMembers(this, dupMembers))
             }
             if (!kind.allowsMemberVariables) {
-                memberVariables.forEach {
+                _memberVariables.forEach {
                     reportings.add(Reporting.entryNotAllowedOnBaseType(this, it))
                 }
             }
@@ -207,7 +235,7 @@ class BoundBaseType(
         }
     }
 
-    fun resolveMemberVariable(name: String): BoundBaseTypeMemberVariable? = memberVariables.find { it.name == name }
+    fun resolveMemberVariable(name: String): BoundBaseTypeMemberVariable? = _memberVariables.find { it.name == name }
 
     override fun semanticAnalysisPhase2(): Collection<Reporting> {
         return seanHelper.phase2 {

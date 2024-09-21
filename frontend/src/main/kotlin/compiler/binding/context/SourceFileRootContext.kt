@@ -10,10 +10,14 @@ import compiler.binding.BoundOverloadSet
 import compiler.binding.BoundVariable
 import compiler.binding.BoundVisibility
 import compiler.binding.basetype.BoundBaseType
+import compiler.binding.basetype.BoundBaseTypeMemberVariable
+import compiler.binding.basetype.BoundMixinStatement
 import compiler.binding.type.BoundTypeArgument
 import compiler.binding.type.BoundTypeParameter
 import compiler.binding.type.BoundTypeReference
 import compiler.binding.type.UnresolvedType
+import compiler.reportings.Diagnosis
+import compiler.reportings.Reporting
 
 class SourceFileRootContext(
     packageContext: PackageContext,
@@ -97,6 +101,14 @@ class SourceFileRootContext(
             override fun getRepetitionBehaviorRelativeTo(indirectParent: CTContext) = ExecutionScopedCTContext.Repetition.EXACTLY_ONCE
 
             override fun getParentLoop() = null
+
+            override fun registerMixin(
+                mixinStatement: BoundMixinStatement,
+                diagnosis: Diagnosis
+            ): BoundBaseTypeMemberVariable? {
+                diagnosis.add(Reporting.mixinNotAllowed(mixinStatement))
+                return null
+            }
         }
     }
 

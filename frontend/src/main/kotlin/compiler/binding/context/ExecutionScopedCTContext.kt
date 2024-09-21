@@ -6,8 +6,13 @@ import compiler.ast.Statement.Companion.chain
 import compiler.binding.BoundExecutable
 import compiler.binding.BoundLoop
 import compiler.binding.BoundVariable
+import compiler.binding.SemanticallyAnalyzable
+import compiler.binding.basetype.BoundBaseTypeMemberVariable
+import compiler.binding.basetype.BoundMixinStatement
 import compiler.binding.context.effect.EphemeralStateClass
 import compiler.binding.context.effect.SideEffect
+import compiler.reportings.Diagnosis
+import compiler.reportings.Reporting
 import compiler.util.TakeWhileAndNextIterator.Companion.takeWhileAndNext
 import compiler.util.takeWhileIsInstance
 import java.util.IdentityHashMap
@@ -100,6 +105,15 @@ interface ExecutionScopedCTContext : CTContext {
      * [MutableExecutionScopedCTContext.addDeferredCode].
      */
     fun getFunctionDeferredCode(): Sequence<BoundExecutable<*>>
+
+    /**
+     * Intended to be called solely by [BoundMixinStatement] during [SemanticallyAnalyzable.semanticAnalysisPhase2].
+     * Registers this mixin in the parent class context.
+     * @return the backing field in which to store the reference to the delegate during the objects lifetime.
+     * `null` iff the mixin is not legal in this context. In that case, the reason has been added to [diagnosis]
+     * by [registerMixin].
+     */
+    fun registerMixin(mixinStatement: BoundMixinStatement, diagnosis: Diagnosis): BoundBaseTypeMemberVariable?
 
     /**
      * @see [ExecutionScopedCTContext.repetitionRelativeToParent]
@@ -305,6 +319,15 @@ open class MutableExecutionScopedCTContext protected constructor(
             .filterIsInstance<LoopExecutionScopedCTContext<*>>()
             .firstOrNull()
             ?.loopNode
+    }
+
+    override fun registerMixin(mixinStatement: BoundMixinStatement, diagnosis: Diagnosis): BoundBaseTypeMemberVariable? {
+        if (parentContext !is ExecutionScopedCTContext) {
+            diagnosis.add(Reporting.mixinNotAllowed(mixinStatement))
+            return null
+        }
+
+        return parentContext.registerMixin(mixinStatement, diagnosis)
     }
 
     override fun toString(): String {
