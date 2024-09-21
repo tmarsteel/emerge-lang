@@ -25,7 +25,6 @@ import compiler.ast.type.TypeReference
 import compiler.binding.BoundVariable
 import compiler.binding.SemanticallyAnalyzable
 import compiler.binding.SideEffectPrediction
-import compiler.binding.basetype.BoundBaseType
 import compiler.binding.context.CTContext
 import compiler.binding.context.ExecutionScopedCTContext
 import compiler.binding.context.MutableExecutionScopedCTContext
@@ -193,14 +192,20 @@ class BoundIdentifierExpression(
                 if (!allowPartiallyUninitialized) {
                     variable.getTypeInContext(context)
                         ?.let { it as? RootResolvedTypeReference }
-                        ?.let { it.baseType as? BoundBaseType }
-                        ?.let { typeAsClassDef ->
-                            context.getEphemeralState(PartialObjectInitialization, variable)
-                                .getUninitializedMembers(typeAsClassDef)
-                        }
-                        ?.takeUnless { it.isEmpty() }
-                        ?.let {
-                            reportings.add(Reporting.objectNotFullyInitialized(it, declaration.span))
+                        ?.baseType
+                        ?.let { baseType ->
+                            val partialState = context.getEphemeralState(PartialObjectInitialization, variable)
+                            partialState.getUninitializedMembers(baseType)
+                                .takeUnless { it.isEmpty() }
+                                ?.let {
+                                    reportings.add(Reporting.notAllMemberVariablesInitialized(it, declaration.span))
+                                }
+
+                            partialState.getUninitializedMixins(baseType)
+                                .takeUnless { it.isEmpty() }
+                                ?.let {
+                                    reportings.add(Reporting.notAllMixinsInitialized(it, declaration.span))
+                                }
                         }
                 }
             }

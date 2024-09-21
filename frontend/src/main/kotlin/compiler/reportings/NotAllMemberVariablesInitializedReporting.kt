@@ -3,7 +3,7 @@ package compiler.reportings
 import compiler.ast.BaseTypeMemberVariableDeclaration
 import compiler.lexer.Span
 
-class ObjectNotFullyInitializedReporting(
+class NotAllMemberVariablesInitializedReporting(
     val uninitializedMembers: Collection<BaseTypeMemberVariableDeclaration>,
     span: Span,
 ) : Reporting(
@@ -16,7 +16,7 @@ class ObjectNotFullyInitializedReporting(
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is ObjectNotFullyInitializedReporting) return false
+        if (other !is NotAllMemberVariablesInitializedReporting) return false
 
         if (span != other.span) return false
 

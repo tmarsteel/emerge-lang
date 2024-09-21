@@ -2,6 +2,7 @@ package compiler.compiler.negative
 
 import compiler.ast.type.TypeMutability
 import compiler.reportings.MixinNotAllowedReporting
+import compiler.reportings.ObjectUsedBeforeMixinInitializationReporting
 import compiler.reportings.ValueNotAssignableReporting
 import compiler.reportings.VariableUsedAfterLifetimeReporting
 import io.kotest.core.spec.style.FreeSpec
@@ -86,5 +87,23 @@ class MixinErrors : FreeSpec({
             .shouldReport<VariableUsedAfterLifetimeReporting> {
                 it.variable.name shouldBe "mixinValue"
             }
+    }
+
+    "use of self before all mixins are initialized" {
+        validateModule("""
+            interface I {
+                fn test(self) -> S32
+            }
+            intrinsic fn provideSomeI() -> exclusive I
+            class Bar : I {
+                constructor { 
+                    self.bla()
+                    mixin provideSomeI()
+                }
+                
+                fn bla(self) {}
+            }
+        """.trimIndent())
+            .shouldReport<ObjectUsedBeforeMixinInitializationReporting>()
     }
 })

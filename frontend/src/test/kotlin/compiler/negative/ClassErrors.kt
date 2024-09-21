@@ -16,7 +16,7 @@ import compiler.reportings.IncompatibleReturnTypeOnOverrideReporting
 import compiler.reportings.MissingFunctionBodyReporting
 import compiler.reportings.MultipleClassConstructorsReporting
 import compiler.reportings.MultipleClassDestructorsReporting
-import compiler.reportings.ObjectNotFullyInitializedReporting
+import compiler.reportings.NotAllMemberVariablesInitializedReporting
 import compiler.reportings.OverloadSetHasNoDisjointParameterReporting
 import compiler.reportings.OverrideAddsSideEffectsReporting
 import compiler.reportings.OverrideDropsNothrowReporting
@@ -278,7 +278,7 @@ class ClassErrors : FreeSpec({
                     
                     fn doSomething(p: Foo) {}
                 """.trimIndent())
-                    .shouldReport<ObjectNotFullyInitializedReporting> {
+                    .shouldReport<NotAllMemberVariablesInitializedReporting> {
                         it.uninitializedMembers.shouldBeSingleton().single().name.value shouldBe "x"
                     }
             }
@@ -338,7 +338,7 @@ class ClassErrors : FreeSpec({
                     
                     fn doSomething(p: Foo) {}
                 """.trimIndent())
-                    .shouldReport<ObjectNotFullyInitializedReporting> {
+                    .shouldReport<NotAllMemberVariablesInitializedReporting> {
                         it.uninitializedMembers should haveSize(1)
                         it.uninitializedMembers.single().name.value shouldBe "x"
                     }

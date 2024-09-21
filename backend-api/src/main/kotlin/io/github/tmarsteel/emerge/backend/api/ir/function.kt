@@ -43,11 +43,29 @@ interface IrMemberFunction : IrBaseTypeFunction {
 }
 
 /**
+ * Denotes that this member function is declared in a supertype, too.
+ */
+sealed interface IrInheritedMemberFunction : IrMemberFunction {
+    val superFunction: IrMemberFunction
+}
+
+/**
  * Denotes that this member function is fully reused from the supertype, so the compilation result of the
  * supertype function could be re-used to save on program size.
  */
-interface IrFullyInheritedMemberFunction : IrMemberFunction {
-    val superFunction: IrMemberFunction
+interface IrFullyInheritedMemberFunction : IrInheritedMemberFunction
+
+/**
+ * Denotes that the implementation of this member function should be delegated to a nested object
+ * that implements the same supertype
+ */
+interface IrDelegatingMemberFunction : IrInheritedMemberFunction {
+    /**
+     * The delegation target. Is guaranteed to
+     * * be initialized to a non-null value during object construction
+     * * refer to an object that implements the same supertype as [superFunction].`ownerBaseType`
+     */
+    val delegatesTo: IrClass.MemberVariable
 }
 
 /**
