@@ -5,9 +5,11 @@ import compiler.ast.Expression
 import compiler.ast.expression.AstCastExpression
 import compiler.ast.type.TypeMutability
 import compiler.ast.type.TypeReference
+import compiler.binding.BoundExecutable
 import compiler.binding.IrCodeChunkImpl
 import compiler.binding.SideEffectPrediction
 import compiler.binding.basetype.BoundBaseType
+import compiler.binding.context.CTContext
 import compiler.binding.context.ExecutionScopedCTContext
 import compiler.binding.expression.BoundExpression.Companion.wrapIrAsStatement
 import compiler.binding.misc_ir.IrCreateTemporaryValueImpl
@@ -37,6 +39,9 @@ class BoundCastExpression(
         safeCast -> value.throwBehavior
         else -> SideEffectPrediction.POSSIBLY
     }
+    override val returnBehavior: SideEffectPrediction? get() = value.returnBehavior
+
+    override val modifiedContext = value.modifiedContext
 
     override lateinit var type: BoundTypeReference
         private set
@@ -63,7 +68,13 @@ class BoundCastExpression(
             value.setExpectedEvaluationResultType(type)
         }
 
+        value.markEvaluationResultUsed()
+
         return reportings
+    }
+
+    override fun markEvaluationResultUsed() {
+        // not forwarded as the cast uses the result of the value expression anyhow
     }
 
     private var expectedMutability: TypeMutability? = null
@@ -90,6 +101,21 @@ class BoundCastExpression(
         value.setNothrow(boundary)
     }
 
+    override fun setExpectedReturnType(type: BoundTypeReference) {
+        value.setExpectedReturnType(type)
+    }
+
+    override fun markEvaluationResultCaptured(withMutability: TypeMutability) {
+        // we can use type.mutability here because that is in-line with expectations after sean2
+        value.markEvaluationResultCaptured(if (type.mutability.isAssignableTo(withMutability)) {
+            withMutability
+        } else {
+            TypeMutability.READONLY
+        })
+    }
+
+
+
     override fun semanticAnalysisPhase3(): Collection<Reporting> {
         val reportings = mutableListOf<Reporting>()
 
@@ -100,6 +126,18 @@ class BoundCastExpression(
 
         return reportings
     }
+
+    override fun findReadsBeyond(boundary: CTContext): Collection<BoundExpression<*>> {
+        return value.findReadsBeyond(boundary)
+    }
+
+    override fun findWritesBeyond(boundary: CTContext): Collection<BoundExecutable<*>> {
+        return value.findWritesBeyond(boundary)
+    }
+
+    override val isEvaluationResultReferenceCounted: Boolean get() = value.isEvaluationResultReferenceCounted
+    override val isEvaluationResultAnchored: Boolean get() = value.isEvaluationResultAnchored
+    override val isCompileTimeConstant: Boolean get() = value.isCompileTimeConstant
 
     override fun toBackendIrExpression(): IrExpression {
         if (isTypedNumericLiteral) {
