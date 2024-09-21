@@ -66,8 +66,22 @@ class BoundCastExpression(
         return reportings
     }
 
+    private var expectedMutability: TypeMutability? = null
     override fun setExpectedEvaluationResultType(type: BoundTypeReference) {
         // don't forward / isolate this from the to-be-cast expression
+        expectedMutability = type.mutability
+    }
+
+    override fun semanticAnalysisPhase2(): Collection<Reporting> {
+        val reportings = value.semanticAnalysisPhase2().toMutableSet()
+        val valueType = value.type
+        val expectedMutability = this.expectedMutability
+        if (valueType != null && declaration.toType.mutability == null && expectedMutability != null && valueType.mutability.isAssignableTo(expectedMutability)) {
+            // user didn't specify mutability but the value fits what is expected in the context; allow this cross-talk across the cast boundary
+            this.type = type.withMutability(expectedMutability)
+        }
+
+        return reportings
     }
 
     private var nothrowBoundary: NothrowViolationReporting.SideEffectBoundary? = null
