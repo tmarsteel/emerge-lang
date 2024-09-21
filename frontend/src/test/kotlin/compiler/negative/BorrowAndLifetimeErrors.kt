@@ -68,7 +68,6 @@ class BorrowAndLifetimeErrors : FreeSpec({
                 set v2 = v
                 return v
             }
-            fn capture(p: const Test) {}
         """.trimIndent())
             .shouldReport<VariableUsedAfterLifetimeReporting> {
                 it.variable.name.value shouldBe "v"
@@ -81,10 +80,10 @@ class BorrowAndLifetimeErrors : FreeSpec({
             class Test {}
             fn test() -> Test {
                 v: exclusive _ = Test()
-                capture(v)
+                captureValue(v)
                 return v
             }
-            fn capture(p: const Test) {}
+            fn captureValue(p: const Test) {}
         """.trimIndent())
             .shouldReport<VariableUsedAfterLifetimeReporting> {
                 it.variable.name.value shouldBe "v"
@@ -96,13 +95,13 @@ class BorrowAndLifetimeErrors : FreeSpec({
         "lifetime ended in then-only if" {
             validateModule("""
                 class Test {}
-                fn capture(p: Test) {}
+                fn captureValue(p: Test) {}
                 fn test(cond: Bool) {
                     v: exclusive _ = Test()
                     if (cond) {
                         v2 = v
                     }
-                    capture(v)
+                    captureValue(v)
                 }
             """.trimIndent())
                 .shouldReport<VariableUsedAfterLifetimeReporting> {
@@ -114,14 +113,14 @@ class BorrowAndLifetimeErrors : FreeSpec({
         "lifetime ended in one branch of if" {
             validateModule("""
                 class Test {}
-                fn capture(p: Test) {}
+                fn captureValue(p: Test) {}
                 fn test(cond: Bool) {
                     v: exclusive _ = Test()
                     if (cond) {
                         v2 = v
                     } else {
                     }
-                    capture(v)
+                    captureValue(v)
                 }
             """.trimIndent())
                 .shouldReport<VariableUsedAfterLifetimeReporting> {
@@ -133,7 +132,7 @@ class BorrowAndLifetimeErrors : FreeSpec({
         "lifetime ended in both branches of if" {
             validateModule("""
                 class Test {}
-                fn capture(p: Test) {}
+                fn captureValue(p: Test) {}
                 fn test(cond: Bool) {
                     v: exclusive _ = Test()
                     if (cond) {
@@ -141,7 +140,7 @@ class BorrowAndLifetimeErrors : FreeSpec({
                     } else {
                         v3 = v
                     }
-                    capture(v)
+                    captureValue(v)
                 }
             """.trimIndent())
                 .shouldReport<VariableUsedAfterLifetimeReporting> {
@@ -157,10 +156,10 @@ class BorrowAndLifetimeErrors : FreeSpec({
                 class C {}
                 fn test(p: exclusive C) {
                     while true {
-                        capture(p)
+                        captureValue(p)
                     }
                 }
-                intrinsic fn capture(p: const Any)
+                intrinsic fn captureValue(p: const Any)
             """.trimIndent())
                 .shouldReport<LifetimeEndingCaptureInLoopReporting>()
         }
@@ -170,9 +169,9 @@ class BorrowAndLifetimeErrors : FreeSpec({
         "capture by passing to a capturing function parameter" {
             validateModule("""
                 class Test {}
-                fn capture(p1: Test) {}
+                fn captureValue(p1: Test) {}
                 fn test(borrow p2: Test) {
-                    capture(p2)
+                    captureValue(p2)
                 }
             """.trimIndent())
                 .shouldReport<BorrowedVariableCapturedReporting> {
@@ -182,9 +181,9 @@ class BorrowAndLifetimeErrors : FreeSpec({
             validateModule("""
                 class Dummy {}
                 class Test {
-                    fn capture(self, p1: Dummy) {}
+                    fn captureValue(self, p1: Dummy) {}
                     fn test(self, borrow p2: Dummy) {
-                        self.capture(p2)
+                        self.captureValue(p2)
                     }
                 }
             """.trimIndent())
@@ -255,12 +254,12 @@ class BorrowAndLifetimeErrors : FreeSpec({
         "definitely with linear control flow" {
             validateModule("""
                 class Test {}
-                fn capture(p: const Any) {}
+                fn captureValue(p: const Any) {}
                 fn test() {
                     var v1: exclusive _ = Test()
-                    capture(v1)
+                    captureValue(v1)
                     set v1 = Test()
-                    capture(v1)
+                    captureValue(v1)
                 }
             """.trimIndent())
                 .shouldHaveNoDiagnostics()
@@ -269,16 +268,16 @@ class BorrowAndLifetimeErrors : FreeSpec({
         "definitely with branched control flow" {
             validateModule("""
                 class Test {}
-                fn capture(p: const Any) {}
+                fn captureValue(p: const Any) {}
                 fn test(cond: Bool) {
                     var v1: exclusive _ = Test()
-                    capture(v1)
+                    captureValue(v1)
                     if cond {
                         set v1 = Test()
                     } else {
                         set v1 = Test()
                     }
-                    capture(v1)
+                    captureValue(v1)
                 }
             """.trimIndent())
                 .shouldHaveNoDiagnostics()
@@ -287,14 +286,14 @@ class BorrowAndLifetimeErrors : FreeSpec({
         "maybe with branched control flow" {
             validateModule("""
                 class Test {}
-                fn capture(p: const Any) {}
+                fn captureValue(p: const Any) {}
                 fn test(cond: Bool) {
                     var v1: exclusive _ = Test()
-                    capture(v1)
+                    captureValue(v1)
                     if cond {
                         set v1 = Test()
                     }
-                    capture(v1)
+                    captureValue(v1)
                 }
             """.trimIndent())
                 .shouldReport<VariableUsedAfterLifetimeReporting>()
