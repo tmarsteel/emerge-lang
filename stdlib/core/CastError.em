@@ -6,6 +6,6 @@ import emerge.std.collections.ArrayList
 
 class CastError : Error {
     constructor {
-        mixin ThrowableTrait("The cast failed; the value is not of the expected type.") as Throwable
+        mixin ThrowableTrait("The cast failed; the value is not of the expected type.") as Error
     }
 }

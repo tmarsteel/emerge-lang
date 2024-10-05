@@ -448,17 +448,9 @@ export class Array<Element> {
 export class ArrayIndexOutOfBoundsError : Error {
     export invalidIndex: UWord = init
     
-    private var stackTrace: const ArrayList<StackTraceElement>? = null
-    
-    export override read fn fillStackTrace(self: mut _) {
-        set self.stackTrace = self.stackTrace ?: collectStackTrace(2 as U32, false)
+    export constructor {
+        mixin ThrowableTrait(null) as Error
     }
-    
-    export override nothrow fn getStackTrace(self) -> const ArrayList<StackTraceElement>? {
-        return self.stackTrace
-    }
-    
-    export override nothrow fn getMessage(self) -> const String? = null
 }
 
 private SPACE_CODEPOINT: S8 = 32

@@ -75,16 +75,7 @@ export fn rejectInvalidUtf8(borrow bytes: Array<S8>) {
 
 export class InvalidUtf8Exception : Throwable {
     private message: String = init
-    
-    private var stackTrace: const ArrayList<StackTraceElement>? = null
-
-    export override read fn fillStackTrace(self: mut _) {
-        set self.stackTrace = self.stackTrace ?: collectStackTrace(2 as U32, false)
+    constructor {
+        mixin ThrowableTrait(self.message) as Throwable
     }
-
-    export override nothrow fn getStackTrace(self) -> const ArrayList<StackTraceElement>? {
-        return self.stackTrace
-    }
-
-    export override nothrow fn getMessage(self) = self.message
 }

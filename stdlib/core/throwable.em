@@ -47,7 +47,7 @@ export interface Error : Throwable {}
 // as a delegation implementation in Throwables.
 // implements Error so it can be used in both Error and Exception classes
 export class ThrowableTrait : Error {
-	message: String = init
+	message: String? = init
 
     private var stackTrace: const ArrayList<StackTraceElement>? = null
 
